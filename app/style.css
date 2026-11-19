@@ -1,0 +1,22 @@
+html, body { margin: 0; min-height: 100%; background: #12081c; color: #f5eef7; font: 15px/1.45 system-ui, sans-serif; }
+.app { display: flex; gap: 28px; align-items: flex-start; justify-content: center; padding: 22px; box-sizing: border-box; }
+.controls { display: flex; flex-direction: column; gap: 14px; width: 300px; flex: none; background: #1d0f2b; border: 1px solid #4a2358; border-radius: 12px; padding: 18px; }
+.controls h1 { margin: 0; font-size: 30px; letter-spacing: 2px; background: linear-gradient(90deg, #ff5da2, #ff9a3d, #ffe66d); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.tag { margin: 0; color: #c9a8d6; font-size: 13px; }
+fieldset { border: 1px solid #4a2358; border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 9px; margin: 0; }
+legend { font-weight: 800; letter-spacing: 1px; text-transform: uppercase; font-size: 12px; color: #ff9a3d; padding: 0 6px; }
+label { display: flex; flex-direction: column; gap: 5px; font-weight: 600; font-size: 13px; }
+.hint { margin: 0; color: #a98db5; font-size: 12px; font-weight: 400; }
+.row { display: flex; gap: 8px; }
+.row button { flex: 1; }
+input[type=text], select { font: inherit; padding: 8px; border: 1px solid #6b3a7d; border-radius: 6px; background: #2a1539; color: #f5eef7; }
+input[type=range] { width: 100%; accent-color: #ff5da2; }
+button { font: inherit; font-weight: 700; padding: 9px 10px; border: 1px solid #6b3a7d; border-radius: 6px; background: #2a1539; color: #f5eef7; cursor: pointer; }
+button.primary { background: linear-gradient(90deg, #ff2d78, #ff7a18); border: 0; font-size: 16px; padding: 12px; }
+#status { margin: 0; color: #8fe3c0; font-size: 13px; min-height: 18px; }
+.preview { position: sticky; top: 22px; }
+canvas { width: min(72vh, 62vw); height: auto; max-height: 92vh; aspect-ratio: auto; box-shadow: 0 12px 44px rgba(0, 0, 0, 0.55); border: 3px solid #fff; background: #2b1838; }
+body.shot-cover .controls { display: none; }
+body.shot-cover .app { padding: 0; }
+body.shot-cover .preview { position: static; }
+body.shot-cover canvas { width: 100vw; height: 100vh; max-height: none; box-shadow: none; border: 0; object-fit: contain; }
