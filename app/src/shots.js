@@ -1,14 +1,14 @@
 // Fixed scenes for screenshots: ?shot=editor shows the page with sample
 // photos loaded; ?shot=cover shows the cover alone. Extra query params:
 // layout, grade, titleStyle, size (WxH), photos (comma-separated sample
-// names, default the six new samples), caption, tagline.
+// names, default the nine v3 samples, characters first), caption, tagline.
 // window.__shotReady is set once the scene is painted.
 export async function runShot(shot, query, state, loadImage, redraw) {
-  const names = (query.get('photos') || 'sunset-boulevard,neon-boardwalk,skyline-night,beach-couple,classic-car,marina-dawn')
+  const names = (query.get('photos') || 'neon-queen,hawaii-keys,duo-skyline,sunset-boulevard,neon-boardwalk,skyline-night,beach-couple,classic-car,marina-dawn')
     .split(',').map((s) => s.trim()).filter(Boolean);
-  state.layout = query.get('layout') ?? 'angled5';
+  state.layout = query.get('layout') ?? 'charhero';
   state.grade = query.get('grade') ?? 'heat';
-  state.titleStyle = query.get('titleStyle') ?? 'neon';
+  state.titleStyle = query.get('titleStyle') ?? 'poster';
   state.caption = query.get('caption') ?? 'VICE HEIST';
   state.tagline = query.get('tagline') ?? 'VICE CITY · 2026';
   const size = query.get('size');

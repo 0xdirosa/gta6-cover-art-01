@@ -1,5 +1,7 @@
 // A tiny static server for app/ (Node 22, standard library only), so an entry can be tried
 // locally without a build step: `node serve.ts` serves app/ on http://localhost:8080.
+// v3 note: the app now ships nine sample photos (three character portraits
+// first) and a Character Hero layout; nothing about serving changed.
 // It sends the MIME types an offline web app needs, refuses any path outside app/, and otherwise
 // does nothing clever: this is a development convenience, not a web server for the internet.
 // Screenshots are taken against it with headless Chrome, e.g.:

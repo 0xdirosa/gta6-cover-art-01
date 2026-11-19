@@ -6,18 +6,20 @@ import { runShot } from './shots.js';
 const canvas = document.getElementById('cover');
 const status = document.getElementById('status');
 
-// Six original sample photos (generated for this entry) + the two kit ones.
-export const NEW_SAMPLES = ['sunset-boulevard', 'neon-boardwalk', 'skyline-night', 'beach-couple', 'classic-car', 'marina-dawn'];
+// Nine original sample photos (generated for this entry): three character
+// portraits first — the Character Hero panel always shows the first one —
+// then the six scene shots, plus the two kit ones on a separate button.
+export const NEW_SAMPLES = ['neon-queen', 'hawaii-keys', 'duo-skyline', 'sunset-boulevard', 'neon-boardwalk', 'skyline-night', 'beach-couple', 'classic-car', 'marina-dawn'];
 
 const state = {
-  layout: 'angled5',
+  layout: 'charhero',
   grade: 'heat',
-  titleStyle: 'neon',
+  titleStyle: 'poster',
   caption: 'VICE HEIST',
   tagline: 'VICE CITY · 2026',
   capSize: 100,
   capY: 82,
-  photos: [null, null, null, null, null, null],
+  photos: [null, null, null, null, null, null, null, null, null],
   panels: Array.from({ length: 9 }, () => ({ zoom: 1, dx: 0, dy: 0 })),
 };
 
@@ -62,12 +64,12 @@ async function loadSamples(names) {
 
 document.getElementById('sampleNew').addEventListener('click', async () => {
   state.photos = await loadSamples(NEW_SAMPLES);
-  status.textContent = '6 new sample photos loaded.';
+  status.textContent = '9 sample photos loaded: 3 characters + 6 scenes.';
   redraw();
 });
 document.getElementById('sampleKit').addEventListener('click', async () => {
   const [pier, boulevard] = await loadSamples(['pier', 'boulevard']);
-  state.photos = [pier, boulevard, null, null, null, null];
+  state.photos = [pier, boulevard, null, null, null, null, null, null, null];
   status.textContent = 'Kit sample photos loaded.';
   redraw();
 });
@@ -126,8 +128,8 @@ const shot = new URLSearchParams(location.search).get('shot');
 if (shot) {
   runShot(shot, new URLSearchParams(location.search), state, loadImage, redraw);
 } else {
-  // Default scene: the six new samples, so the first paint already shows
-  // the varied cover instead of empty panels.
+  // Default scene: the nine samples, characters first, so the first paint
+  // already shows the Character Hero cover instead of empty panels.
   loadSamples(NEW_SAMPLES).then((photos) => { state.photos = photos; redraw(); });
   redraw();
 }

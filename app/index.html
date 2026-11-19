@@ -18,17 +18,18 @@
       <label>Photo 2 <input id="photo1" type="file" accept="image/*"></label>
       <label>Photo 3 <input id="photo2" type="file" accept="image/*"></label>
       <div class="row">
-        <button id="sampleNew" type="button">Load 6 new samples</button>
+        <button id="sampleNew" type="button">Load 9 samples</button>
         <button id="sampleKit" type="button">Kit samples</button>
       </div>
-      <p class="hint">Panels cycle through the photos you loaded. Load six and every panel shows a different shot; one photo fills every panel if you load only one.</p>
+      <p class="hint">Panels show different photos while you have enough loaded: load nine and every panel of the 3 × 3 grid shows a different shot; with fewer photos they cycle. Character Hero puts your first photo big.</p>
     </fieldset>
 
     <fieldset>
       <legend>Layout</legend>
       <label>Panels
         <select id="layout">
-          <option value="angled5" selected>Angled 5 — big + four small</option>
+          <option value="charhero" selected>Character Hero — big character + four scenes</option>
+          <option value="angled5">Angled 5 — big + four small</option>
           <option value="hero">Hero — one big, two small</option>
           <option value="trio">Trio — three upright panels</option>
           <option value="quad">Quad — four panels</option>
@@ -75,7 +76,7 @@
       <label>Tagline <input id="tagline" type="text" maxlength="40" value="VICE CITY · 2026"></label>
       <label>Title style
         <select id="titleStyle">
-          <option value="neon" selected>Neon script — glowing sign</option>
+          <option value="poster" selected>Poster block — condensed GTA lettering</option>
           <option value="gradient">Gradient block — bold + halftone</option>
         </select>
       </label>
