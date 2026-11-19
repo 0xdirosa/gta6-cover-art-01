@@ -2,6 +2,9 @@
 // locally without a build step: `node serve.ts` serves app/ on http://localhost:8080.
 // It sends the MIME types an offline web app needs, refuses any path outside app/, and otherwise
 // does nothing clever: this is a development convenience, not a web server for the internet.
+// Screenshots are taken against it with headless Chrome, e.g.:
+//   google-chrome --headless=new --window-size=1280,1280 --virtual-time-budget=9000 \
+//     --screenshot=shot.png "http://127.0.0.1:8080/?shot=cover&layout=angled5&grade=heat"
 import { createReadStream, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';

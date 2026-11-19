@@ -18,20 +18,22 @@
       <label>Photo 2 <input id="photo1" type="file" accept="image/*"></label>
       <label>Photo 3 <input id="photo2" type="file" accept="image/*"></label>
       <div class="row">
-        <button id="samplePier" type="button">Use pier sample</button>
-        <button id="sampleBoulevard" type="button">Use boulevard sample</button>
+        <button id="sampleNew" type="button">Load 6 new samples</button>
+        <button id="sampleKit" type="button">Kit samples</button>
       </div>
-      <p class="hint">Panels cycle through the photos you loaded. One photo fills every panel if you load only one.</p>
+      <p class="hint">Panels cycle through the photos you loaded. Load six and every panel shows a different shot; one photo fills every panel if you load only one.</p>
     </fieldset>
 
     <fieldset>
       <legend>Layout</legend>
       <label>Panels
         <select id="layout">
+          <option value="angled5" selected>Angled 5 — big + four small</option>
           <option value="hero">Hero — one big, two small</option>
           <option value="trio">Trio — three upright panels</option>
           <option value="quad">Quad — four panels</option>
           <option value="split">Split — diagonal two-panel</option>
+          <option value="nine">Nine — 3 × 3 grid</option>
         </select>
       </label>
       <label>Panel to adjust
@@ -40,6 +42,11 @@
           <option value="1">Panel 2</option>
           <option value="2">Panel 3</option>
           <option value="3">Panel 4</option>
+          <option value="4">Panel 5</option>
+          <option value="5">Panel 6</option>
+          <option value="6">Panel 7</option>
+          <option value="7">Panel 8</option>
+          <option value="8">Panel 9</option>
         </select>
       </label>
       <label>Zoom <input id="zoom" type="range" min="100" max="220" value="100"></label>
@@ -51,10 +58,13 @@
       <legend>Colour grade</legend>
       <label>Grade
         <select id="grade">
+          <option value="heat" selected>Heatwave — gradient-map orange</option>
           <option value="sunset">Vice Sunset — pink &amp; orange</option>
           <option value="neon">Neon Nights — pink &amp; cyan</option>
           <option value="gold">Golden Coast — warm gold</option>
           <option value="noir">Noir Teal — teal &amp; magenta</option>
+          <option value="ink">Poster Ink — comic halftone</option>
+          <option value="split">Split Tone — teal shadows, pink light</option>
         </select>
       </label>
     </fieldset>
@@ -63,6 +73,12 @@
       <legend>Caption</legend>
       <label>Title <input id="caption" type="text" maxlength="30" value="VICE HEIST"></label>
       <label>Tagline <input id="tagline" type="text" maxlength="40" value="VICE CITY · 2026"></label>
+      <label>Title style
+        <select id="titleStyle">
+          <option value="neon" selected>Neon script — glowing sign</option>
+          <option value="gradient">Gradient block — bold + halftone</option>
+        </select>
+      </label>
       <label>Title size <input id="capSize" type="range" min="60" max="140" value="100"></label>
       <label>Title height <input id="capY" type="range" min="55" max="95" value="82"></label>
     </fieldset>
@@ -77,6 +93,7 @@
         </select>
       </label>
       <button id="export" type="button" class="primary">Export PNG</button>
+      <button id="exportAll" type="button">Export all 3 sizes</button>
       <p id="status" role="status"></p>
     </fieldset>
   </section>

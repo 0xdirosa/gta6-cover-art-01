@@ -6,15 +6,19 @@ import { runShot } from './shots.js';
 const canvas = document.getElementById('cover');
 const status = document.getElementById('status');
 
+// Six original sample photos (generated for this entry) + the two kit ones.
+export const NEW_SAMPLES = ['sunset-boulevard', 'neon-boardwalk', 'skyline-night', 'beach-couple', 'classic-car', 'marina-dawn'];
+
 const state = {
-  layout: 'hero',
-  grade: 'sunset',
+  layout: 'angled5',
+  grade: 'heat',
+  titleStyle: 'neon',
   caption: 'VICE HEIST',
   tagline: 'VICE CITY · 2026',
   capSize: 100,
   capY: 82,
-  photos: [null, null, null],
-  panels: [{ zoom: 1, dx: 0, dy: 0 }, { zoom: 1, dx: 0, dy: 0 }, { zoom: 1, dx: 0, dy: 0 }, { zoom: 1, dx: 0, dy: 0 }],
+  photos: [null, null, null, null, null, null],
+  panels: Array.from({ length: 9 }, () => ({ zoom: 1, dx: 0, dy: 0 })),
 };
 
 function redraw() {
@@ -47,21 +51,30 @@ function bind(id, fn) {
   });
 });
 
-document.getElementById('samplePier').addEventListener('click', async () => {
-  state.photos[0] = await loadImage('samples/pier.jpg');
-  state.photos[1] = await loadImage('samples/boulevard.jpg');
-  status.textContent = 'Sample photos loaded.';
+async function loadSamples(names) {
+  const loaded = [];
+  for (const name of names) {
+    try { loaded.push(await loadImage(`samples/${name}.jpg`)); }
+    catch { loaded.push(null); }
+  }
+  return loaded;
+}
+
+document.getElementById('sampleNew').addEventListener('click', async () => {
+  state.photos = await loadSamples(NEW_SAMPLES);
+  status.textContent = '6 new sample photos loaded.';
   redraw();
 });
-document.getElementById('sampleBoulevard').addEventListener('click', async () => {
-  state.photos[0] = await loadImage('samples/boulevard.jpg');
-  state.photos[1] = await loadImage('samples/pier.jpg');
-  status.textContent = 'Sample photos loaded.';
+document.getElementById('sampleKit').addEventListener('click', async () => {
+  const [pier, boulevard] = await loadSamples(['pier', 'boulevard']);
+  state.photos = [pier, boulevard, null, null, null, null];
+  status.textContent = 'Kit sample photos loaded.';
   redraw();
 });
 
 bind('layout', (el) => { state.layout = el.value; });
 bind('grade', (el) => { state.grade = el.value; });
+bind('titleStyle', (el) => { state.titleStyle = el.value; });
 bind('caption', (el) => { state.caption = el.value; });
 bind('tagline', (el) => { state.tagline = el.value; });
 bind('capSize', (el) => { state.capSize = Number(el.value); });
@@ -78,22 +91,43 @@ panelSelect.addEventListener('change', () => {
   document.getElementById('pany').value = p.dy;
 });
 
-document.getElementById('export').addEventListener('click', () => {
+const SIZES = [[1080, 1080], [1080, 1350], [1920, 1080]];
+
+function downloadCover(w, h) {
+  return new Promise((resolve) => {
+    const off = document.createElement('canvas');
+    drawCover(off, state, w, h);
+    off.toBlob((blob) => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `vice-panels-${w}x${h}.png`;
+      a.click();
+      resolve();
+    }, 'image/png');
+  });
+}
+
+document.getElementById('export').addEventListener('click', async () => {
   const [w, h] = document.getElementById('size').value.split('x').map(Number);
-  const off = document.createElement('canvas');
-  drawCover(off, state, w, h);
-  off.toBlob((blob) => {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `vice-panels-${w}x${h}.png`;
-    a.click();
-    status.textContent = `Saved vice-panels-${w}x${h}.png`;
-  }, 'image/png');
+  await downloadCover(w, h);
+  status.textContent = `Saved vice-panels-${w}x${h}.png`;
+});
+
+document.getElementById('exportAll').addEventListener('click', async () => {
+  for (const [w, h] of SIZES) {
+    await downloadCover(w, h);
+    // Stagger the downloads so the browser keeps all three.
+    await new Promise((r) => setTimeout(r, 350));
+  }
+  status.textContent = 'Saved all 3 sizes: 1080×1080, 1080×1350, 1920×1080.';
 });
 
 const shot = new URLSearchParams(location.search).get('shot');
 if (shot) {
   runShot(shot, new URLSearchParams(location.search), state, loadImage, redraw);
 } else {
+  // Default scene: the six new samples, so the first paint already shows
+  // the varied cover instead of empty panels.
+  loadSamples(NEW_SAMPLES).then((photos) => { state.photos = photos; redraw(); });
   redraw();
 }

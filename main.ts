@@ -1,11 +1,16 @@
-// VICE PANELS — a gta6-cover-art-01 entry (Node 22, standard library only).
+// VICE PANELS v2 — a gta6-cover-art-01 entry (Node 22, standard library only).
 // The program hands the app in: it copies app/ and screenshots/ from beside
 // this file to /output and writes /output/dossier.json with the vendored
 // make.fun library, so the judge reads the app's source and screenshots.
 // The app itself is plain static files a desktop browser loads offline
 // (app/index.html and its ES modules, no library, no network request).
-// It makes multi-panel Vice City style covers from the user's own photos,
-// with colour grades and a bold caption, exported as PNG in three post sizes.
+// It makes multi-panel Vice City style covers from the user's own photos:
+// six layouts (incl. an angled 5-panel grid and a 3x3 nine-panel grid),
+// six colour grades (incl. a Heatwave gradient-map, a Poster Ink comic
+// halftone shader and a split-tone grade), six original sample photos,
+// a neon-script or gradient-block title with halftone dots, per-panel
+// zoom/pan/crop, and one-click PNG export in all three post sizes.
+// A striped retro sun replaces the old painted sun blob.
 //
 // Serve it locally with `node serve.ts`, then open http://localhost:8080.
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
