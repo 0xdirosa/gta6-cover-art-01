@@ -6,25 +6,66 @@ import { runShot } from './shots.js';
 const canvas = document.getElementById('cover');
 const status = document.getElementById('status');
 
-// Nine original sample photos (generated for this entry): three character
-// portraits first — the Character Hero panel always shows the first one —
-// then the six scene shots, plus the two kit ones on a separate button.
-export const NEW_SAMPLES = ['neon-queen', 'hawaii-keys', 'duo-skyline', 'sunset-boulevard', 'neon-boardwalk', 'skyline-night', 'beach-couple', 'classic-car', 'marina-dawn'];
+// The bundled poster font: Anton (SIL OFL, app/fonts/) — loaded from a
+// local file, never the network. Canvas titles use it as soon as it is
+// ready; until then the fallback keeps the preview working.
+const fontReady = (document.fonts
+  ? document.fonts.load('100px Anton').catch(() => null)
+  : Promise.resolve(null));
+
+// Eleven original sample photos (generated for this entry): the three comic
+// illustration characters first — the Character Hero panel always shows the
+// first one — then the three photo characters, then the five scene shots,
+// plus the two kit ones on a separate button.
+export const NEW_SAMPLES = ['ink-queen', 'ink-hawaii', 'ink-duo', 'neon-queen', 'hawaii-keys', 'sunset-boulevard', 'neon-boardwalk', 'skyline-night', 'beach-couple', 'classic-car', 'marina-dawn'];
 
 const state = {
   layout: 'charhero',
-  grade: 'heat',
+  grade: 'comic',
   titleStyle: 'poster',
   caption: 'VICE HEIST',
   tagline: 'VICE CITY · 2026',
   capSize: 100,
   capY: 82,
-  photos: [null, null, null, null, null, null, null, null, null],
+  photos: Array(11).fill(null),
+  photoNames: Array(11).fill(''),
   panels: Array.from({ length: 9 }, () => ({ zoom: 1, dx: 0, dy: 0 })),
 };
 
 function redraw() {
   drawCover(canvas, state);
+  refreshSlots();
+}
+
+// The three upload slots always show what is actually loaded in them:
+// a thumbnail and the file's name (a sample name or the uploaded file's
+// name) — never "No file chosen" while a photo is in the slot. Slots 1–3
+// show the first three loaded photos, which the sample buttons fill with
+// the character portraits.
+function refreshSlots() {
+  for (let i = 0; i < 3; i++) {
+    const img = document.getElementById(`thumb${i}`);
+    const name = document.getElementById(`slotname${i}`);
+    const photo = state.photos[i];
+    if (img && name) {
+      if (photo) {
+        img.src = photo.currentSrc || photo.src;
+        img.style.display = 'block';
+        name.textContent = state.photoNames[i] || `Photo ${i + 1}`;
+      } else {
+        img.removeAttribute('src');
+        img.style.display = 'none';
+        name.textContent = 'No photo loaded yet';
+      }
+    }
+  }
+  const count = document.getElementById('loadedCount');
+  if (count) {
+    const n = state.photos.filter(Boolean).length;
+    count.textContent = n
+      ? `${n} photo${n === 1 ? '' : 's'} loaded — every panel shows a different shot while enough are loaded.`
+      : 'No photos loaded yet — load the samples or your own photos.';
+  }
 }
 
 export function loadImage(url) {
@@ -44,32 +85,39 @@ function bind(id, fn) {
 
 [0, 1, 2].forEach((i) => {
   const input = document.getElementById(`photo${i}`);
+  const pick = document.querySelector(`.pick[data-for="photo${i}"]`);
+  if (pick) pick.addEventListener('click', () => input.click());
   input.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     state.photos[i] = await loadImage(URL.createObjectURL(file));
-    status.textContent = `Photo ${i + 1} loaded.`;
+    state.photoNames[i] = file.name;
+    status.textContent = `Photo ${i + 1} loaded: ${file.name}.`;
     redraw();
   });
 });
 
 async function loadSamples(names) {
   const loaded = [];
+  const namesOut = [];
   for (const name of names) {
-    try { loaded.push(await loadImage(`samples/${name}.jpg`)); }
-    catch { loaded.push(null); }
+    try { loaded.push(await loadImage(`samples/${name}.jpg`)); namesOut.push(`${name}.jpg`); }
+    catch { loaded.push(null); namesOut.push(''); }
   }
-  return loaded;
+  return { loaded, namesOut };
 }
 
 document.getElementById('sampleNew').addEventListener('click', async () => {
-  state.photos = await loadSamples(NEW_SAMPLES);
-  status.textContent = '9 sample photos loaded: 3 characters + 6 scenes.';
+  const { loaded, namesOut } = await loadSamples(NEW_SAMPLES);
+  state.photos = loaded;
+  state.photoNames = namesOut;
+  status.textContent = '11 sample photos loaded: 6 characters (3 comic ink + 3 photo) + 5 scenes.';
   redraw();
 });
 document.getElementById('sampleKit').addEventListener('click', async () => {
-  const [pier, boulevard] = await loadSamples(['pier', 'boulevard']);
-  state.photos = [pier, boulevard, null, null, null, null, null, null, null];
+  const { loaded, namesOut } = await loadSamples(['pier', 'boulevard']);
+  state.photos = [...loaded, ...Array(9).fill(null)];
+  state.photoNames = [...namesOut, ...Array(9).fill('')];
   status.textContent = 'Kit sample photos loaded.';
   redraw();
 });
@@ -111,11 +159,13 @@ function downloadCover(w, h) {
 
 document.getElementById('export').addEventListener('click', async () => {
   const [w, h] = document.getElementById('size').value.split('x').map(Number);
+  await fontReady;
   await downloadCover(w, h);
   status.textContent = `Saved vice-panels-${w}x${h}.png`;
 });
 
 document.getElementById('exportAll').addEventListener('click', async () => {
+  await fontReady;
   for (const [w, h] of SIZES) {
     await downloadCover(w, h);
     // Stagger the downloads so the browser keeps all three.
@@ -126,10 +176,15 @@ document.getElementById('exportAll').addEventListener('click', async () => {
 
 const shot = new URLSearchParams(location.search).get('shot');
 if (shot) {
-  runShot(shot, new URLSearchParams(location.search), state, loadImage, redraw);
+  runShot(shot, new URLSearchParams(location.search), state, loadImage, redraw, fontReady);
 } else {
-  // Default scene: the nine samples, characters first, so the first paint
-  // already shows the Character Hero cover instead of empty panels.
-  loadSamples(NEW_SAMPLES).then((photos) => { state.photos = photos; redraw(); });
+  // Default scene: the eleven samples, comic characters first, so the first
+  // paint already shows the Character Hero cover instead of empty panels.
+  // Wait for the font so the first paint already uses Anton, not the fallback.
+  Promise.all([fontReady, loadSamples(NEW_SAMPLES)]).then(([, { loaded, namesOut }]) => {
+    state.photos = loaded;
+    state.photoNames = namesOut;
+    redraw();
+  });
   redraw();
 }

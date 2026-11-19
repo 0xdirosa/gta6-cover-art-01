@@ -1,12 +1,14 @@
-// Draws a multi-panel Vice City style cover onto a canvas. v3.
+// Draws a multi-panel Vice City style cover onto a canvas. v4.
 // Own design: seven panel layouts (incl. a Character Hero with one big
-// character panel and a 3x3 nine-panel grid), seven colour grades (incl. a
-// gradient-map Heatwave, a Poster Ink comic shader and a split-tone grade),
-// a striped retro sun, halftone title dots and a condensed poster-block
-// title with auto-fit, and a bold gradient caption. No Rockstar art, logo
-// or font. Panels never repeat a photo while enough distinct photos are
-// loaded: with nine photos every nine-panel cover shows nine different
-// shots.
+// character panel and a 3x3 nine-panel grid), eight colour grades (incl. a
+// gradient-map Heatwave, a Poster Ink comic shader, a split-tone grade and a
+// Comic Ink grade that turns ANY loaded photo into a comic illustration by
+// posterizing it and inking its edges on canvas), a striped retro sun,
+// halftone title dots and a condensed poster-block title in the bundled
+// Anton font (SIL OFL, app/fonts/) with auto-fit, and a bold gradient
+// caption. No Rockstar art, logo or font. Panels never repeat a photo
+// while enough distinct photos are loaded: with eleven photos every
+// nine-panel cover shows nine different shots.
 
 export const GRADES = {
   sunset: { name: 'Vice Sunset', filter: 'saturate(1.25) contrast(1.06)', top: 'rgba(255,122,26,0.10)', mid: 'rgba(255,45,120,0.28)', low: 'rgba(120,10,90,0.42)', sun: '#ffd166', sunCore: '#fff3c4', frame: '#ff5da2' },
@@ -16,6 +18,7 @@ export const GRADES = {
   heat: { name: 'Heatwave', filter: 'saturate(1.5) contrast(1.16) brightness(1.03)', top: 'rgba(255,90,0,0.10)', mid: 'rgba(255,45,90,0.30)', low: 'rgba(120,0,40,0.46)', sun: '#ffb347', sunCore: '#fff0c0', frame: '#ff6a00' },
   ink: { name: 'Poster Ink', filter: 'contrast(1.5) saturate(1.7) brightness(1.03)', top: 'rgba(255,255,255,0.04)', mid: 'rgba(0,0,0,0.10)', low: 'rgba(10,0,30,0.38)', sun: '#ffe66d', sunCore: '#fffbe0', frame: '#ffffff' },
   split: { name: 'Split Tone', filter: 'saturate(1.3) contrast(1.12)', top: 'rgba(0,220,200,0.16)', mid: 'rgba(120,40,140,0.22)', low: 'rgba(255,45,120,0.34)', sun: '#7ef0e0', sunCore: '#e6fff9', frame: '#00e5ff' },
+  comic: { name: 'Comic Ink', filter: 'saturate(1.6) contrast(1.25)', top: 'rgba(255,120,40,0.05)', mid: 'rgba(255,45,120,0.14)', low: 'rgba(40,0,90,0.25)', sun: '#ffb347', sunCore: '#fff0c0', frame: '#ff2d78', inkPass: true },
 };
 
 export const LAYOUTS = ['charhero', 'hero', 'trio', 'quad', 'split', 'angled5', 'nine'];
@@ -89,6 +92,56 @@ function drawHalftoneDots(ctx, px, py, pw, ph, spacing, color) {
   ctx.restore();
 }
 
+// Comic Ink: turn any photo into a comic illustration on canvas. The photo
+// is drawn into a small offscreen canvas, its colours are posterized to
+// five flat levels per channel, and a Sobel edge pass inks every strong
+// luminance edge black — flat colour + ink outline, the comic look — before
+// the result is painted into the panel. The temp canvas is capped at 768px
+// on its long side so the live preview stays fast; the halftone dots drawn
+// over it hide the downscale.
+function comicInkImage(photo, dx, dy, dw, dh) {
+  const scale = Math.min(1, 768 / Math.max(dw, dh));
+  const tw = Math.max(2, Math.round(dw * scale));
+  const th = Math.max(2, Math.round(dh * scale));
+  const tmp = document.createElement('canvas');
+  tmp.width = tw;
+  tmp.height = th;
+  const tctx = tmp.getContext('2d', { willReadFrequently: true });
+  tctx.drawImage(photo, 0, 0, tw, th);
+  const img = tctx.getImageData(0, 0, tw, th);
+  const d = img.data;
+  const lum = new Float32Array(tw * th);
+  for (let i = 0; i < tw * th; i++) {
+    const o = i * 4;
+    // Posterize: five flat levels per channel (0, 64, 128, 192, 255),
+    // then lift the result a touch — a straight posterize of a photo
+    // goes muddy-dark under the grade wash, and comic art stays bright.
+    d[o] = Math.min(255, Math.round(d[o] / 64) * 64 * 1.05 + 10);
+    d[o + 1] = Math.min(255, Math.round(d[o + 1] / 64) * 64 * 1.05 + 10);
+    d[o + 2] = Math.min(255, Math.round(d[o + 2] / 64) * 64 * 1.05 + 10);
+    lum[i] = 0.299 * d[o] + 0.587 * d[o + 1] + 0.114 * d[o + 2];
+  }
+  // Sobel edges on the posterized luminance: strong edges become ink.
+  // The threshold sits high on purpose: the illustration samples already
+  // carry halftone dots, and a low threshold inks every dot into speckle.
+  const out = new Uint8ClampedArray(d);
+  const at = (x, y) => lum[Math.min(th - 1, Math.max(0, y)) * tw + Math.min(tw - 1, Math.max(0, x))];
+  for (let y = 0; y < th; y++) {
+    for (let x = 0; x < tw; x++) {
+      const gx = -at(x - 1, y - 1) - 2 * at(x - 1, y) - at(x - 1, y + 1)
+        + at(x + 1, y - 1) + 2 * at(x + 1, y) + at(x + 1, y + 1);
+      const gy = -at(x - 1, y - 1) - 2 * at(x, y - 1) - at(x + 1, y - 1)
+        + at(x - 1, y + 1) + 2 * at(x, y + 1) + at(x + 1, y + 1);
+      if (Math.abs(gx) + Math.abs(gy) > 210) {
+        const o = (y * tw + x) * 4;
+        out[o] = 16; out[o + 1] = 4; out[o + 2] = 32; // deep violet-black ink
+      }
+    }
+  }
+  tctx.putImageData(new ImageData(out, tw, th), 0, 0);
+  return { canvas: tmp, dx, dy, dw, dh };
+}
+
 function drawPhotoInPanel(ctx, photo, px, py, pw, ph, slant, adjust, grade) {
   ctx.save();
   panelPath(ctx, px, py, pw, ph, slant);
@@ -103,9 +156,14 @@ function drawPhotoInPanel(ctx, photo, px, py, pw, ph, slant, adjust, grade) {
     // toward the top of the photo, where faces usually are, instead of
     // dead centre — otherwise a wide export crops a face to a nose.
     if (dh > ph * 1.4) dy -= (dh - ph) * 0.2;
-    ctx.filter = grade.filter || 'saturate(1.25) contrast(1.06)';
-    ctx.drawImage(photo, dx, dy, dw, dh);
-    ctx.filter = 'none';
+    if (grade.inkPass) {
+      const inked = comicInkImage(photo, dx, dy, dw, dh);
+      ctx.drawImage(inked.canvas, inked.dx, inked.dy, inked.dw, inked.dh);
+    } else {
+      ctx.filter = grade.filter || 'saturate(1.25) contrast(1.06)';
+      ctx.drawImage(photo, dx, dy, dw, dh);
+      ctx.filter = 'none';
+    }
   } else {
     ctx.fillStyle = '#3a1748';
     ctx.fillRect(px, py, pw, ph);
@@ -117,9 +175,12 @@ function drawPhotoInPanel(ctx, photo, px, py, pw, ph, slant, adjust, grade) {
   wash.addColorStop(1, grade.low);
   ctx.fillStyle = wash;
   ctx.fillRect(px + Math.min(0, slant), py, pw + Math.abs(slant), ph);
-  // Poster Ink gets a comic halftone print over the photo.
+  // Poster Ink and Comic Ink get a comic halftone print over the photo.
   if (grade === GRADES.ink) {
     drawHalftoneDots(ctx, px, py, pw, ph, Math.max(7, pw * 0.02), 'rgba(0,0,0,0.16)');
+  }
+  if (grade.inkPass) {
+    drawHalftoneDots(ctx, px, py, pw, ph, Math.max(8, pw * 0.02), 'rgba(0,0,0,0.12)');
   }
   ctx.restore();
   // White divider around the panel.
@@ -190,11 +251,14 @@ function drawTitleDots(ctx, w, y, size, grade) {
   ctx.restore();
 }
 
-// Condensed poster font: the heaviest system sans, squeezed sideways and
-// sheared a touch, so the lettering reads as a poster block, not body text.
-const POSTER_FONT = (size) => `900 ${Math.round(size)}px 'Arial Black', Impact, 'DejaVu Sans', system-ui, sans-serif`;
-const POSTER_SQUEEZE = 0.82; // horizontal scale applied when drawing
-const POSTER_SKEW = -0.06; // slight forward lean
+// Condensed poster font: Anton, bundled under app/fonts/ under the SIL Open
+// Font License (see app/fonts/OFL.txt) — the rules name the SIL OFL as a
+// shippable font license, and the kit's own house apps letter in Anton.
+// Anton ships a single weight, so the size is used as-is; Arial Black and
+// Impact stay as the fallback if the bundled file ever fails to load.
+const POSTER_FONT = (size) => `${Math.round(size)}px Anton, 'Arial Black', Impact, 'DejaVu Sans', system-ui, sans-serif`;
+const POSTER_SQUEEZE = 0.92; // Anton is already condensed; only a light squeeze
+const POSTER_SKEW = -0.04; // slight forward lean
 
 // Shrink the title until it fits inside maxWidth (already accounting for the
 // squeeze), so it can never touch the cover edges. Returns the fitted size
@@ -220,13 +284,29 @@ function drawCaption(ctx, w, h, state, grade) {
   // v2's 'neon' (Georgia italic) is retired: it now maps to the poster block.
   const style = (state.titleStyle || 'poster') === 'neon' ? 'poster' : state.titleStyle;
   if (tag) {
+    // The tagline sits on its own dark scrim band, so the letters never
+    // print directly across a face or a busy photo: the band reads as a
+    // designed caption bar, and the text stays legible over any panel.
     ctx.save();
-    ctx.font = `700 ${Math.round(h * 0.028)}px system-ui, sans-serif`;
+    const fontSize = Math.round(h * 0.028);
+    ctx.font = `700 ${fontSize}px system-ui, sans-serif`;
     ctx.textAlign = 'center';
+    const letterspaced = tag.split('').join('  ');
+    const tw = ctx.measureText(letterspaced).width;
+    const ty = y - h * 0.075;
+    const padX = Math.max(10, w * 0.02);
+    const padY = fontSize * 0.45;
+    ctx.fillStyle = 'rgba(20,4,32,0.55)';
+    const bx = w / 2 - tw / 2 - padX;
+    const by = ty - fontSize * 0.72 - padY;
+    const bw = tw + padX * 2;
+    const bh = fontSize * 1.15 + padY * 2;
+    if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, bh / 2); ctx.fill(); }
+    else ctx.fillRect(bx, by, bw, bh);
     ctx.fillStyle = '#ffffff';
     ctx.shadowColor = 'rgba(0,0,0,0.7)';
     ctx.shadowBlur = h * 0.008;
-    ctx.fillText(tag.split('').join('  '), w / 2, y - h * 0.075);
+    ctx.fillText(letterspaced, w / 2, ty);
     ctx.restore();
   }
   if (!text) return null;
@@ -237,9 +317,9 @@ function drawCaption(ctx, w, h, state, grade) {
   grad.addColorStop(0, '#ffffff');
   grad.addColorStop(0.55, grade.sun);
   grad.addColorStop(1, '#ff2d78');
-  // 'poster' is the condensed, sheared, neon-edged block; 'gradient' is the
-  // same block drawn straight and clean. Both auto-fit to the same 92%.
-  const squeeze = style === 'gradient' ? 0.9 : POSTER_SQUEEZE;
+  // 'poster' is the condensed Anton block, sheared, neon-edged; 'gradient'
+  // is the same block drawn straight and clean. Both auto-fit to the same 92%.
+  const squeeze = style === 'gradient' ? 0.96 : POSTER_SQUEEZE;
   const skew = style === 'gradient' ? 0 : POSTER_SKEW;
   const { size, width } = fitTitle(ctx, text, POSTER_FONT, startSize, maxWidth, squeeze);
   ctx.save();
@@ -275,17 +355,61 @@ export function drawCover(canvas, state, W, H) {
   const shapes = panelShapes(layout);
   const gutter = Math.max(4, w * 0.008);
   const loaded = (state.photos || []).filter(Boolean);
-  // Order the photos so each panel's shape gets a photo that fits it:
-  // the Character Hero's tall panel wants a portrait (a face), the Hero's
-  // wide top panel wants a landscape shot — a portrait in a wide slot crops
-  // to a nose-and-sunglasses close-up. The rest follow in load order.
-  let ordered = loaded;
-  if (loaded.length > 1) {
-    let first = null;
-    if (layout === 'charhero') first = loaded.find((p) => p.naturalWidth < p.naturalHeight);
-    if (layout === 'hero') first = loaded.find((p) => p.naturalWidth >= p.naturalHeight);
-    if (first) ordered = [first, ...loaded.filter((p) => p !== first)];
+  // Order the photos for a layout so no character or shot repeats while
+// enough distinct photos are loaded, and each panel's shape gets a photo
+// that fits it. Two samples of the same character (the photo and the comic
+// version — neon-queen and ink-queen, hawaii-keys and ink-hawaii) share one
+// character key, so a cover never shows the same face twice: the key is the
+// file name with its ink/neon prefix and keys/skyline suffix stripped, and
+// a user's own upload keys on its full file name. The Character Hero's big
+// panel wants a portrait (a face); its last small panel wants a landscape
+// scene, so the striped sun sitting in that panel's corner has sky, never
+// a face. The Hero's wide top panel wants a landscape shot — a portrait in
+// a wide slot crops to a nose-and-sunglasses close-up.
+function orderPhotos(photos, names, layout) {
+  const n = panelShapes(layout).length;
+  const keyOf = (i) => {
+    const base = (names?.[i] || '').replace(/\.jpe?g$/i, '').replace(/\.png$/i, '');
+    if (!base) return `photo${i}`;
+    return base.replace(/^(ink|neon)-/, '').replace(/-(keys|skyline)$/, '');
+  };
+  const items = photos
+    .map((p, i) => (p ? { p, key: keyOf(i), portrait: p.naturalWidth < p.naturalHeight } : null))
+    .filter(Boolean);
+  const all = items.map((x) => x.p);
+  const used = new Set();
+  const take = (pred) => {
+    const it = items.find((x) => !used.has(x.key) && pred(x));
+    if (!it) return null;
+    used.add(it.key);
+    return it.p;
+  };
+  const out = [];
+  if (layout === 'charhero') {
+    const big = take((x) => x.portrait);
+    if (big) out.push(big);
+    while (out.length < n - 1) {
+      const p = take((x) => x.portrait);
+      if (!p) break;
+      out.push(p);
+    }
+    const scene = take((x) => !x.portrait);
+    if (scene) out.push(scene);
+  } else {
+    if (layout === 'hero') {
+      const first = take((x) => !x.portrait);
+      if (first) out.push(first);
+    }
   }
+  while (out.length < n) {
+    const p = take(() => true);
+    if (!p) break;
+    out.push(p);
+  }
+  while (out.length < n) out.push(all[out.length % all.length]);
+  return out;
+}
+  const ordered = orderPhotos(state.photos, state.photoNames, layout);
   shapes.forEach((s, i) => {
     const px = s.x * w + gutter / 2;
     const py = s.y * h + gutter / 2;

@@ -1,4 +1,4 @@
-// VICE PANELS v3 — a gta6-cover-art-01 entry (Node 22, standard library only).
+// VICE PANELS v4 — a gta6-cover-art-01 entry (Node 22, standard library only).
 // The program hands the app in: it copies app/ and screenshots/ from beside
 // this file to /output and writes /output/dossier.json with the vendored
 // make.fun library, so the judge reads the app's source and screenshots.
@@ -7,11 +7,14 @@
 // It makes multi-panel Vice City style covers from the user's own photos:
 // seven layouts (incl. a Character Hero with one big character panel and a
 // 3x3 nine-panel grid that never repeats a photo while nine are loaded),
-// seven colour grades (incl. a Heatwave gradient-map, a Poster Ink comic
-// halftone shader and a split-tone grade), nine original sample photos
-// (three character portraits first), a condensed poster-block title with
-// auto-fit and halftone dots, per-panel zoom/pan/crop, and one-click PNG
-// export in all three post sizes.
+// eight colour grades (incl. a Heatwave gradient-map, a Poster Ink comic
+// halftone shader, a split-tone grade and a Comic Ink grade that posterizes
+// any photo and inks its edges on canvas, turning it into comic art),
+// eleven original sample photos (three comic illustration characters first,
+// then three photo characters, then five scenes), a condensed poster-block
+// title in the bundled Anton font (SIL OFL, app/fonts/) with auto-fit and
+// halftone dots, per-panel zoom/pan/crop, and one-click PNG export in all
+// three post sizes.
 // A striped retro sun replaces the old painted sun blob.
 //
 // Serve it locally with `node serve.ts`, then open http://localhost:8080.

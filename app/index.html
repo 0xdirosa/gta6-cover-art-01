@@ -14,14 +14,24 @@
 
     <fieldset>
       <legend>Photos</legend>
-      <label>Photo 1 <input id="photo0" type="file" accept="image/*"></label>
-      <label>Photo 2 <input id="photo1" type="file" accept="image/*"></label>
-      <label>Photo 3 <input id="photo2" type="file" accept="image/*"></label>
+      <div class="slot">
+        <label>Photo 1 <input id="photo0" type="file" accept="image/*" class="filepick"><button type="button" class="pick" data-for="photo0">Choose a photo…</button></label>
+        <span class="thumb"><img id="thumb0" alt=""><em id="slotname0">No photo loaded yet</em></span>
+      </div>
+      <div class="slot">
+        <label>Photo 2 <input id="photo1" type="file" accept="image/*" class="filepick"><button type="button" class="pick" data-for="photo1">Choose a photo…</button></label>
+        <span class="thumb"><img id="thumb1" alt=""><em id="slotname1">No photo loaded yet</em></span>
+      </div>
+      <div class="slot">
+        <label>Photo 3 <input id="photo2" type="file" accept="image/*" class="filepick"><button type="button" class="pick" data-for="photo2">Choose a photo…</button></label>
+        <span class="thumb"><img id="thumb2" alt=""><em id="slotname2">No photo loaded yet</em></span>
+      </div>
       <div class="row">
-        <button id="sampleNew" type="button">Load 9 samples</button>
+        <button id="sampleNew" type="button">Load 11 samples</button>
         <button id="sampleKit" type="button">Kit samples</button>
       </div>
-      <p class="hint">Panels show different photos while you have enough loaded: load nine and every panel of the 3 × 3 grid shows a different shot; with fewer photos they cycle. Character Hero puts your first photo big.</p>
+      <p class="hint" id="loadedCount">No photos loaded yet — load the samples or your own photos.</p>
+      <p class="hint">Panels show different photos while you have enough loaded: load eleven and every panel of the 3 × 3 grid shows a different shot; with fewer photos they cycle. Character Hero puts your first photo big.</p>
     </fieldset>
 
     <fieldset>
@@ -59,7 +69,8 @@
       <legend>Colour grade</legend>
       <label>Grade
         <select id="grade">
-          <option value="heat" selected>Heatwave — gradient-map orange</option>
+          <option value="comic" selected>Comic Ink — any photo becomes comic art</option>
+          <option value="heat">Heatwave — gradient-map orange</option>
           <option value="sunset">Vice Sunset — pink &amp; orange</option>
           <option value="neon">Neon Nights — pink &amp; cyan</option>
           <option value="gold">Golden Coast — warm gold</option>
@@ -76,7 +87,7 @@
       <label>Tagline <input id="tagline" type="text" maxlength="40" value="VICE CITY · 2026"></label>
       <label>Title style
         <select id="titleStyle">
-          <option value="poster" selected>Poster block — condensed GTA lettering</option>
+          <option value="poster" selected>Poster block — Anton condensed lettering</option>
           <option value="gradient">Gradient block — bold + halftone</option>
         </select>
       </label>
