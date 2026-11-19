@@ -1,11 +1,14 @@
 // Fixed scenes for screenshots: ?shot=editor shows the page with sample
 // photos loaded; ?shot=cover shows the cover alone. Extra query params:
 // layout, grade, titleStyle, size (WxH), photos (comma-separated sample
-// names, default the eleven v4 samples, comic characters first), caption,
-// tagline. window.__shotReady is set once the scene is painted — after the
-// bundled Anton font is loaded, so the title is measured in the real font.
+// names, default the thirteen v5 samples, comic characters first — the
+// nine-panel grid is character-led: at least six of its nine panels are
+// characters, with a scene in the middle-right panel for the sun),
+// caption, tagline. window.__shotReady is set once the scene is painted —
+// after the bundled Anton font is loaded, so the title is measured in the
+// real font.
 export async function runShot(shot, query, state, loadImage, redraw, fontReady) {
-  const names = (query.get('photos') || 'ink-queen,ink-hawaii,ink-duo,neon-queen,hawaii-keys,sunset-boulevard,neon-boardwalk,skyline-night,beach-couple,classic-car,marina-dawn')
+  const names = (query.get('photos') || 'ink-queen,ink-hawaii,ink-duo,ink-leather,ink-blonde,neon-queen,hawaii-keys,sunset-boulevard,beach-couple,neon-boardwalk,skyline-night,classic-car,marina-dawn')
     .split(',').map((s) => s.trim()).filter(Boolean);
   state.layout = query.get('layout') ?? 'charhero';
   state.grade = query.get('grade') ?? 'comic';

@@ -1,4 +1,4 @@
-// VICE PANELS v4 — a gta6-cover-art-01 entry (Node 22, standard library only).
+// VICE PANELS v5 — a gta6-cover-art-01 entry (Node 22, standard library only).
 // The program hands the app in: it copies app/ and screenshots/ from beside
 // this file to /output and writes /output/dossier.json with the vendored
 // make.fun library, so the judge reads the app's source and screenshots.
@@ -10,8 +10,9 @@
 // eight colour grades (incl. a Heatwave gradient-map, a Poster Ink comic
 // halftone shader, a split-tone grade and a Comic Ink grade that posterizes
 // any photo and inks its edges on canvas, turning it into comic art),
-// eleven original sample photos (three comic illustration characters first,
-// then three photo characters, then five scenes), a condensed poster-block
+// thirteen original sample photos (five comic illustration characters first,
+// then three photo characters, then five scenes — the nine-panel grid is
+// character-led), a condensed poster-block
 // title in the bundled Anton font (SIL OFL, app/fonts/) with auto-fit and
 // halftone dots, per-panel zoom/pan/crop, and one-click PNG export in all
 // three post sizes.

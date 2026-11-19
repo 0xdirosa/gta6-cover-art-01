@@ -13,11 +13,14 @@ const fontReady = (document.fonts
   ? document.fonts.load('100px Anton').catch(() => null)
   : Promise.resolve(null));
 
-// Eleven original sample photos (generated for this entry): the three comic
+// Thirteen original sample photos (generated for this entry): the five comic
 // illustration characters first — the Character Hero panel always shows the
 // first one — then the three photo characters, then the five scene shots,
-// plus the two kit ones on a separate button.
-export const NEW_SAMPLES = ['ink-queen', 'ink-hawaii', 'ink-duo', 'neon-queen', 'hawaii-keys', 'sunset-boulevard', 'neon-boardwalk', 'skyline-night', 'beach-couple', 'classic-car', 'marina-dawn'];
+// plus the two kit ones on a separate button. The nine-panel grid is
+// character-led: at least six of its nine panels are characters, and a
+// scene (sunset boulevard) sits in the middle-right panel, where the
+// striped sun has sky to live in instead of a face.
+export const NEW_SAMPLES = ['ink-queen', 'ink-hawaii', 'ink-duo', 'ink-leather', 'ink-blonde', 'neon-queen', 'hawaii-keys', 'sunset-boulevard', 'beach-couple', 'neon-boardwalk', 'skyline-night', 'classic-car', 'marina-dawn'];
 
 const state = {
   layout: 'charhero',
@@ -27,8 +30,8 @@ const state = {
   tagline: 'VICE CITY · 2026',
   capSize: 100,
   capY: 82,
-  photos: Array(11).fill(null),
-  photoNames: Array(11).fill(''),
+  photos: Array(13).fill(null),
+  photoNames: Array(13).fill(''),
   panels: Array.from({ length: 9 }, () => ({ zoom: 1, dx: 0, dy: 0 })),
 };
 
@@ -111,13 +114,13 @@ document.getElementById('sampleNew').addEventListener('click', async () => {
   const { loaded, namesOut } = await loadSamples(NEW_SAMPLES);
   state.photos = loaded;
   state.photoNames = namesOut;
-  status.textContent = '11 sample photos loaded: 6 characters (3 comic ink + 3 photo) + 5 scenes.';
+  status.textContent = '13 sample photos loaded: 8 characters (5 comic ink + 3 photo) + 5 scenes.';
   redraw();
 });
 document.getElementById('sampleKit').addEventListener('click', async () => {
   const { loaded, namesOut } = await loadSamples(['pier', 'boulevard']);
-  state.photos = [...loaded, ...Array(9).fill(null)];
-  state.photoNames = [...namesOut, ...Array(9).fill('')];
+  state.photos = [...loaded, ...Array(11).fill(null)];
+  state.photoNames = [...namesOut, ...Array(11).fill('')];
   status.textContent = 'Kit sample photos loaded.';
   redraw();
 });
@@ -178,7 +181,7 @@ const shot = new URLSearchParams(location.search).get('shot');
 if (shot) {
   runShot(shot, new URLSearchParams(location.search), state, loadImage, redraw, fontReady);
 } else {
-  // Default scene: the eleven samples, comic characters first, so the first
+  // Default scene: the thirteen samples, comic characters first, so the first
   // paint already shows the Character Hero cover instead of empty panels.
   // Wait for the font so the first paint already uses Anton, not the fallback.
   Promise.all([fontReady, loadSamples(NEW_SAMPLES)]).then(([, { loaded, namesOut }]) => {

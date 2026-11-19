@@ -1,4 +1,4 @@
-// Draws a multi-panel Vice City style cover onto a canvas. v4.
+// Draws a multi-panel Vice City style cover onto a canvas. v5.
 // Own design: seven panel layouts (incl. a Character Hero with one big
 // character panel and a 3x3 nine-panel grid), eight colour grades (incl. a
 // gradient-map Heatwave, a Poster Ink comic shader, a split-tone grade and a
@@ -7,8 +7,11 @@
 // halftone title dots and a condensed poster-block title in the bundled
 // Anton font (SIL OFL, app/fonts/) with auto-fit, and a bold gradient
 // caption. No Rockstar art, logo or font. Panels never repeat a photo
-// while enough distinct photos are loaded: with eleven photos every
-// nine-panel cover shows nine different shots.
+// while enough distinct photos are loaded: with thirteen photos every
+// nine-panel cover shows nine different shots — and the sample order is
+// character-led, so at least six of the nine panels are characters
+// (five comic ink plus the beach couple) and a scene sits where the
+// striped sun can live without covering a face.
 
 export const GRADES = {
   sunset: { name: 'Vice Sunset', filter: 'saturate(1.25) contrast(1.06)', top: 'rgba(255,122,26,0.10)', mid: 'rgba(255,45,120,0.28)', low: 'rgba(120,10,90,0.42)', sun: '#ffd166', sunCore: '#fff3c4', frame: '#ff5da2' },
@@ -192,28 +195,36 @@ function drawPhotoInPanel(ctx, photo, px, py, pw, ph, slant, adjust, grade) {
   ctx.restore();
 }
 
-function drawSun(ctx, w, h, grade, layout) {
+// Names of the sample photos that are scenes (sky, streets, sea), as
+// opposed to character portraits. A panel counts as a scene panel only if
+// its photo's file name is one of these: a user's own upload has an
+// unknown name and is treated as a face until proven otherwise.
+const SCENE_NAMES = new Set(['sunset-boulevard', 'neon-boardwalk', 'skyline-night', 'classic-car', 'marina-dawn', 'pier', 'boulevard']);
+
+function drawSun(ctx, w, h, grade, shapes, ordered) {
   // Retro striped sun: a gradient disc with horizontal gaps cut out of its
-  // lower half. Where it goes depends on the layout: the character portraits
-  // are face-centred and can fill a whole panel, so a fixed corner kept
-  // landing on a face (top-right covered the duo's faces, top-left covered
-  // the neon queen's eye in the nine-panel). Each position below sits in
-  // the corner of a panel that holds a scene photo in the sample set:
-  // charhero/quad/angled5 use the bottom-right scene panel's top-right
-  // corner, nine uses the skyline panel's top-right corner, hero/split use
-  // the top-left corner of the wide top panel (face centred, corner is
-  // sky). Trio has a face in every panel, so it gets no sun at all.
-  const spots = {
-    charhero: [0.89, 0.60],
-    nine: [0.89, 0.39],
-    quad: [0.89, 0.60],
-    angled5: [0.89, 0.60],
-    hero: [0.11, 0.10],
-    split: [0.89, 0.10],
-  };
-  const spot = spots[layout];
-  if (!spot) return;
-  const cx = w * spot[0], cy = h * spot[1], r = h * 0.055;
+  // lower half. Where it goes is decided from the photos actually on the
+  // cover, never from a fixed corner: fixed corners kept landing on faces
+  // once the sample order became character-led — the nine-panel's
+  // top-right panel is a beach portrait now, and Character Hero's last
+  // small panel is one too, so both old spots put the sun on a man's
+  // face. The sun now sits in the top-right corner of the topmost scene
+  // panel (rightmost on a tie), in sky, never on a face; a cover whose
+  // panels are all portraits simply has no sun.
+  const gutter = Math.max(4, w * 0.008);
+  let best = null;
+  shapes.forEach((s, i) => {
+    const name = (ordered[i]?.name || '').replace(/\.(jpe?g|png)$/i, '');
+    if (!SCENE_NAMES.has(name)) return;
+    const score = s.y * 100 - s.x; // topmost wins, rightmost breaks ties
+    if (!best || score < best.score) best = { s, score };
+  });
+  if (!best) return;
+  const { s } = best;
+  const px = s.x * w + gutter / 2, py = s.y * h + gutter / 2;
+  const pw = s.w * w - gutter;
+  const r = h * 0.055;
+  const cx = px + pw - r * 1.3, cy = py + r * 1.4;
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
   ctx.beginPath();
@@ -363,26 +374,28 @@ export function drawCover(canvas, state, W, H) {
 // file name with its ink/neon prefix and keys/skyline suffix stripped, and
 // a user's own upload keys on its full file name. The Character Hero's big
 // panel wants a portrait (a face); its last small panel wants a landscape
-// scene, so the striped sun sitting in that panel's corner has sky, never
-// a face. The Hero's wide top panel wants a landscape shot — a portrait in
+// shot. The items returned carry their file names too, so drawSun can tell
+// a scene panel from a character panel — only a scene panel ever gets the
+// sun. The Hero's wide top panel wants a landscape shot — a portrait in
 // a wide slot crops to a nose-and-sunglasses close-up.
 function orderPhotos(photos, names, layout) {
   const n = panelShapes(layout).length;
+  const baseOf = (i) => (names?.[i] || '').replace(/\.jpe?g$/i, '').replace(/\.png$/i, '');
   const keyOf = (i) => {
-    const base = (names?.[i] || '').replace(/\.jpe?g$/i, '').replace(/\.png$/i, '');
+    const base = baseOf(i);
     if (!base) return `photo${i}`;
     return base.replace(/^(ink|neon)-/, '').replace(/-(keys|skyline)$/, '');
   };
   const items = photos
-    .map((p, i) => (p ? { p, key: keyOf(i), portrait: p.naturalWidth < p.naturalHeight } : null))
+    .map((p, i) => (p ? { p, name: baseOf(i), key: keyOf(i), portrait: p.naturalWidth < p.naturalHeight } : null))
     .filter(Boolean);
-  const all = items.map((x) => x.p);
+  const all = items;
   const used = new Set();
   const take = (pred) => {
     const it = items.find((x) => !used.has(x.key) && pred(x));
     if (!it) return null;
     used.add(it.key);
-    return it.p;
+    return it;
   };
   const out = [];
   if (layout === 'charhero') {
@@ -417,10 +430,10 @@ function orderPhotos(photos, names, layout) {
     const ph = s.h * h - gutter;
     // Enough distinct photos: every panel shows a different one, so a
     // nine-panel cover never repeats a shot. Otherwise panels cycle.
-    const pic = ordered.length ? ordered[i % ordered.length] : null;
+    const pic = ordered.length ? ordered[i % ordered.length]?.p : null;
     drawPhotoInPanel(ctx, pic, px, py, pw, ph, s.slant * w, (state.panels || [])[i], grade);
   });
-  drawSun(ctx, w, h, grade, layout);
+  drawSun(ctx, w, h, grade, shapes, ordered);
   // Neon outer frame.
   ctx.save();
   ctx.strokeStyle = grade.frame;

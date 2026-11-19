@@ -1,2 +1,4 @@
 # Build output from `node main.ts` (regenerated, never committed).
 out/
+# Sidecar metadata the image generator drops beside generated samples.
+app/samples/media-generation-*.json

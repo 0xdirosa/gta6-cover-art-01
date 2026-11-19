@@ -1,7 +1,10 @@
 /* Poster font: Anton, bundled under fonts/ under the SIL Open Font
    License (fonts/OFL.txt) — the competition rules name the SIL OFL as a
    shippable font license, and the kit's own house apps letter in Anton.
-   Loaded from a local file, never the network. */
+   Loaded from a local file, never the network.
+   v5: thirteen sample photos now, five of them comic-ink characters, so
+   the nine-panel grid is character-led — the editor and the canvas both
+   show characters first. */
 @font-face {
   font-family: 'Anton';
   src: url('./fonts/Anton-Regular.ttf') format('truetype');

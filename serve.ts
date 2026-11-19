@@ -1,9 +1,10 @@
 // A tiny static server for app/ (Node 22, standard library only), so an entry can be tried
 // locally without a build step: `node serve.ts` serves app/ on http://localhost:8080.
-// v4 note: the app now ships eleven sample photos (three comic illustration
-// characters first, then three photo characters, then five scenes), a Comic
-// Ink grade and a bundled Anton font under app/fonts/; nothing about
-// serving changed — .ttf is already in the MIME table below.
+// v5 note: the app now ships thirteen sample photos (five comic illustration
+// characters first, then three photo characters, then five scenes — the
+// nine-panel grid is character-led), a Comic Ink grade and a bundled Anton
+// font under app/fonts/; nothing about serving changed — .ttf is already in
+// the MIME table below.
 // It sends the MIME types an offline web app needs, refuses any path outside app/, and otherwise
 // does nothing clever: this is a development convenience, not a web server for the internet.
 // Screenshots are taken against it with headless Chrome, e.g.:
