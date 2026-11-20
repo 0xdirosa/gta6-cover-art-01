@@ -3,116 +3,101 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>VICE PANELS — GTA-style Cover Maker</title>
+<title>VICE PANELS — Make GTA 6 Cover Art</title>
 <link rel="stylesheet" href="./style.css">
 </head>
 <body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">VICE PANELS</span>
+    <span class="sub">VICE CITY 2026 · make your GTA 6 cover art</span>
+  </div>
+  <p class="hint">Works fully offline. Your photos never leave this page.</p>
+</header>
+
 <main class="app">
   <section class="controls" aria-label="Cover editor">
-    <h1>VICE PANELS</h1>
-    <p class="tag">Your photos, made into a Vice City poster. Offline — photos never leave this machine.</p>
+    <h1>Build your cover</h1>
+    <p class="intro">Pick a layout, pick a grade, drop in your photos — the
+    Comic Ink grade turns any photo into comic art. Export all three post
+    sizes as PNG in one click.</p>
 
-    <fieldset>
-      <legend>Photos</legend>
-      <div class="slot">
-        <label>Photo 1 <input id="photo0" type="file" accept="image/*" class="filepick"><button type="button" class="pick" data-for="photo0">Choose a photo…</button></label>
-        <span class="thumb"><img id="thumb0" alt=""><em id="slotname0">No photo loaded yet</em></span>
+    <div class="field">
+      <label for="title">Cover title</label>
+      <input id="title" type="text" maxlength="24" value="VICE HEIST">
+    </div>
+    <div class="field">
+      <label for="tagline">Tagline</label>
+      <input id="tagline" type="text" maxlength="30" value="VICE CITY 2026">
+    </div>
+
+    <div class="field">
+      <span class="label">Layout</span>
+      <div id="layouts" class="picker" role="group" aria-label="Layout"></div>
+    </div>
+    <div class="field">
+      <span class="label">Grade</span>
+      <div id="grades" class="picker" role="group" aria-label="Grade"></div>
+    </div>
+    <div class="field">
+      <span class="label">Preview size</span>
+      <div id="sizes" class="picker" role="group" aria-label="Preview size"></div>
+    </div>
+
+    <div class="field">
+      <span class="label">Your photos — three slots</span>
+      <div class="slots">
+        <label class="slot">
+          <span class="slot-title">Slot 1</span>
+          <img class="thumb" alt="" hidden>
+          <span class="fname">Choose a photo…</span>
+          <input type="file" accept="image/*">
+        </label>
+        <label class="slot">
+          <span class="slot-title">Slot 2</span>
+          <img class="thumb" alt="" hidden>
+          <span class="fname">Choose a photo…</span>
+          <input type="file" accept="image/*">
+        </label>
+        <label class="slot">
+          <span class="slot-title">Slot 3</span>
+          <img class="thumb" alt="" hidden>
+          <span class="fname">Choose a photo…</span>
+          <input type="file" accept="image/*">
+        </label>
       </div>
-      <div class="slot">
-        <label>Photo 2 <input id="photo1" type="file" accept="image/*" class="filepick"><button type="button" class="pick" data-for="photo1">Choose a photo…</button></label>
-        <span class="thumb"><img id="thumb1" alt=""><em id="slotname1">No photo loaded yet</em></span>
+      <button id="load-samples" type="button" class="secondary">Load 13 samples</button>
+    </div>
+
+    <div class="field">
+      <span class="label">Crop the panel under your cursor</span>
+      <div class="crop-row">
+        <label for="zoom">Zoom</label>
+        <input id="zoom" type="range" min="100" max="250" step="1" value="100">
+        <span id="zoom-val">100%</span>
       </div>
-      <div class="slot">
-        <label>Photo 3 <input id="photo2" type="file" accept="image/*" class="filepick"><button type="button" class="pick" data-for="photo2">Choose a photo…</button></label>
-        <span class="thumb"><img id="thumb2" alt=""><em id="slotname2">No photo loaded yet</em></span>
-      </div>
-      <div class="row">
-        <button id="sampleNew" type="button">Load 13 samples</button>
-        <button id="sampleKit" type="button">Kit samples</button>
-      </div>
-      <p class="hint" id="loadedCount">No photos loaded yet — load the samples or your own photos.</p>
-      <p class="hint">Panels show different photos while you have enough loaded: load thirteen and every panel of the 3 × 3 grid shows a different shot — six of the nine panels are characters, so the grid is character-led; with fewer photos they cycle. Character Hero puts your first photo big.</p>
-    </fieldset>
+      <p class="mini">Drag a panel to pan it. Scroll on a panel to zoom it.</p>
+      <button id="reset-crop" type="button" class="secondary">Reset crop</button>
+    </div>
 
-    <fieldset>
-      <legend>Layout</legend>
-      <label>Panels
-        <select id="layout">
-          <option value="charhero" selected>Character Hero — big character + four scenes</option>
-          <option value="angled5">Angled 5 — big + four small</option>
-          <option value="hero">Hero — one big, two small</option>
-          <option value="trio">Trio — three upright panels</option>
-          <option value="quad">Quad — four panels</option>
-          <option value="split">Split — diagonal two-panel</option>
-          <option value="nine">Nine — 3 × 3 grid</option>
-        </select>
-      </label>
-      <label>Panel to adjust
-        <select id="panel">
-          <option value="0">Panel 1</option>
-          <option value="1">Panel 2</option>
-          <option value="2">Panel 3</option>
-          <option value="3">Panel 4</option>
-          <option value="4">Panel 5</option>
-          <option value="5">Panel 6</option>
-          <option value="6">Panel 7</option>
-          <option value="7">Panel 8</option>
-          <option value="8">Panel 9</option>
-        </select>
-      </label>
-      <label>Zoom <input id="zoom" type="range" min="100" max="220" value="100"></label>
-      <label>Shift left / right <input id="panx" type="range" min="-40" max="40" value="0"></label>
-      <label>Shift up / down <input id="pany" type="range" min="-40" max="40" value="0"></label>
-    </fieldset>
-
-    <fieldset>
-      <legend>Colour grade</legend>
-      <label>Grade
-        <select id="grade">
-          <option value="comic" selected>Comic Ink — any photo becomes comic art</option>
-          <option value="heat">Heatwave — gradient-map orange</option>
-          <option value="sunset">Vice Sunset — pink &amp; orange</option>
-          <option value="neon">Neon Nights — pink &amp; cyan</option>
-          <option value="gold">Golden Coast — warm gold</option>
-          <option value="noir">Noir Teal — teal &amp; magenta</option>
-          <option value="ink">Poster Ink — comic halftone</option>
-          <option value="split">Split Tone — teal shadows, pink light</option>
-        </select>
-      </label>
-    </fieldset>
-
-    <fieldset>
-      <legend>Caption</legend>
-      <label>Title <input id="caption" type="text" maxlength="30" value="VICE HEIST"></label>
-      <label>Tagline <input id="tagline" type="text" maxlength="40" value="VICE CITY · 2026"></label>
-      <label>Title style
-        <select id="titleStyle">
-          <option value="poster" selected>Poster block — Anton condensed lettering</option>
-          <option value="gradient">Gradient block — bold + halftone</option>
-        </select>
-      </label>
-      <label>Title size <input id="capSize" type="range" min="60" max="140" value="100"></label>
-      <label>Title height <input id="capY" type="range" min="55" max="95" value="82"></label>
-    </fieldset>
-
-    <fieldset>
-      <legend>Export</legend>
-      <label>Size
-        <select id="size">
-          <option value="1080x1080">1080 × 1080 — square post</option>
-          <option value="1080x1350">1080 × 1350 — portrait post</option>
-          <option value="1920x1080">1920 × 1080 — wide post</option>
-        </select>
-      </label>
-      <button id="export" type="button" class="primary">Export PNG</button>
-      <button id="exportAll" type="button">Export all 3 sizes</button>
-      <p id="status" role="status"></p>
-    </fieldset>
+    <div class="field actions">
+      <button id="export-one" type="button">Export this size</button>
+      <button id="export-all" type="button" class="accent">Export PNG × 3 sizes</button>
+      <p id="status" role="status">Ready.</p>
+      <p id="sample-count" class="mini"></p>
+    </div>
   </section>
-  <section class="preview">
-    <canvas id="cover" width="1080" height="1080" aria-label="The cover preview"></canvas>
+
+  <section class="stage" aria-label="Cover preview">
+    <canvas id="preview" width="1080" height="1080"></canvas>
   </section>
 </main>
+
+<footer class="foot">
+  <p>VICE PANELS — an unofficial fan-made cover maker. Not affiliated with
+  Rockstar Games. No Rockstar artwork, logos or fonts are used. Anton is
+  licensed under the SIL Open Font License 1.1 (see app/fonts/OFL.txt).</p>
+</footer>
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>

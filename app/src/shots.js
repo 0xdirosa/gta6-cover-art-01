@@ -1,49 +1,103 @@
-// Fixed scenes for screenshots: ?shot=editor shows the page with sample
-// photos loaded; ?shot=cover shows the cover alone. Extra query params:
-// layout, grade, titleStyle, size (WxH), photos (comma-separated sample
-// names, default the thirteen v5 samples, comic characters first — the
-// nine-panel grid is character-led: at least six of its nine panels are
-// characters, with a scene in the middle-right panel for the sun),
-// caption, tagline. window.__shotReady is set once the scene is painted —
-// after the bundled Anton font is loaded, so the title is measured in the
-// real font.
-export async function runShot(shot, query, state, loadImage, redraw, fontReady) {
-  const names = (query.get('photos') || 'ink-queen,ink-hawaii,ink-duo,ink-leather,ink-blonde,neon-queen,hawaii-keys,sunset-boulevard,beach-couple,neon-boardwalk,skyline-night,classic-car,marina-dawn')
-    .split(',').map((s) => s.trim()).filter(Boolean);
-  state.layout = query.get('layout') ?? 'charhero';
-  state.grade = query.get('grade') ?? 'comic';
-  state.titleStyle = query.get('titleStyle') ?? 'poster';
-  state.caption = query.get('caption') ?? 'VICE HEIST';
-  state.tagline = query.get('tagline') ?? 'VICE CITY · 2026';
-  const size = query.get('size');
-  if (size) {
-    const [w, h] = size.split('x').map(Number);
-    if (w && h) { state.exportW = w; state.exportH = h; }
+// Fixed scenes for screenshots, driven by `?shot=`.
+// `cover` hides the controls and paints one cover; `editor` shows the page
+// with the editor open and a finished cover. window.__shotReady is set once
+// the scene has painted, so a headless browser can wait on it.
+export const SHOT_DEFS = {
+  hero: {
+    layout: 'hero',
+    grade: 'comicInk',
+    title: 'VICE HEIST',
+    tagline: 'VICE CITY 2026',
+    size: 'square',
+    shotClass: 'shot-cover',
+    order: [
+      'ink-queen.jpg',
+      'ink-hawaii.jpg',
+      'neon-queen.jpg',
+      'classic-car.jpg',
+      'sunset-boulevard.jpg',
+    ],
+  },
+  editor: {
+    layout: 'nine',
+    grade: 'comicInk',
+    title: 'VICE HEIST',
+    tagline: 'VICE CITY 2026',
+    size: 'wide',
+    shotClass: 'shot-editor',
+    order: [
+      'ink-queen.jpg',
+      'ink-hawaii.jpg',
+      'ink-duo.jpg',
+      'ink-leather.jpg',
+      'ink-blonde.jpg',
+      'neon-queen.jpg',
+      'hawaii-keys.jpg',
+      'beach-couple.jpg',
+      'sunset-boulevard.jpg',
+    ],
+  },
+  nine: {
+    layout: 'nine',
+    grade: 'comicInk',
+    title: 'VICE HEIST',
+    tagline: 'VICE CITY 2026',
+    size: 'portrait',
+    shotClass: 'shot-cover',
+    order: [
+      'ink-queen.jpg',
+      'ink-hawaii.jpg',
+      'ink-duo.jpg',
+      'ink-leather.jpg',
+      'ink-blonde.jpg',
+      'neon-queen.jpg',
+      'hawaii-keys.jpg',
+      'beach-couple.jpg',
+      'sunset-boulevard.jpg',
+    ],
+  },
+  wide: {
+    layout: 'hero',
+    grade: 'comicInk',
+    title: 'VICE HEIST',
+    tagline: 'VICE CITY 2026',
+    size: 'wide',
+    shotClass: 'shot-cover',
+    order: [
+      'ink-queen.jpg',
+      'ink-hawaii.jpg',
+      'neon-queen.jpg',
+      'classic-car.jpg',
+      'sunset-boulevard.jpg',
+    ],
+  },
+};
+
+// Reorders the loaded photos so the shot shows exactly the listed files in
+// exactly this order, then applies the scene to the shared state.
+export function applyShot(name, state, draw) {
+  const def = SHOT_DEFS[name];
+  if (!def) return false;
+  state.layout = def.layout;
+  state.grade = def.grade;
+  state.title = def.title;
+  state.tagline = def.tagline;
+  state.size = def.size;
+  state.views = {};
+  state.fixedOrder = def.order.slice();
+  const byFile = new Map(state.photos.map((p) => [p.file, p]));
+  const ordered = [];
+  for (const file of def.order) {
+    const photo = byFile.get(file);
+    if (photo) ordered.push(photo);
   }
-  const loaded = [];
-  const namesOut = [];
-  for (const name of names) {
-    try { loaded.push(await loadImage(`samples/${name}.jpg`)); namesOut.push(`${name}.jpg`); }
-    catch { loaded.push(null); namesOut.push(''); }
-  }
-  state.photos = loaded;
-  state.photoNames = namesOut;
-  // Keep the controls in sync with the scene.
-  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
-  set('layout', state.layout);
-  set('grade', state.grade);
-  set('titleStyle', state.titleStyle);
-  set('caption', state.caption);
-  set('tagline', state.tagline);
-  set('size', size || '1080x1080');
-  if (shot === 'cover') {
-    document.body.classList.add('shot-cover');
-    const [w, h] = (size || '1080x1080').split('x').map(Number);
-    const canvas = document.getElementById('cover');
-    canvas.width = w;
-    canvas.height = h;
-  }
-  if (fontReady) await fontReady;
-  redraw();
-  requestAnimationFrame(() => requestAnimationFrame(() => { window.__shotReady = true; }));
+  const rest = state.photos.filter((p) => !def.order.includes(p.file));
+  state.photos = ordered.concat(rest);
+  document.body.classList.add(def.shotClass);
+  const title = document.getElementById('title');
+  const tagline = document.getElementById('tagline');
+  if (title) title.value = def.title;
+  if (tagline) tagline.value = def.tagline;
+  draw();
+  return true;
 }

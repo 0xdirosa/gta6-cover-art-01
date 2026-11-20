@@ -1,193 +1,394 @@
-// Wires the Vice Panels editor: photos, layout, grade, caption, export.
-// A `?shot=` query sets up a fixed scene for a screenshot (./shots.js).
-import { drawCover } from './cover.js';
-import { runShot } from './shots.js';
+// VICE PANELS — editor wiring.
+// Loads the 13 samples, orders them character-first, lets the person pick a
+// layout and a grade, crop and position each panel, edit the caption, upload
+// their own photos, and export the cover as a PNG in all three post sizes.
+// A `?shot=` query sets up a fixed scene for a screenshot instead (shots.js).
+import { drawCover, layoutPanels, LAYOUTS, GRADES } from './cover.js';
+import { SHOT_DEFS, applyShot } from './shots.js';
 
-const canvas = document.getElementById('cover');
-const status = document.getElementById('status');
+// The thirteen samples this session made: five comic-ink characters, three
+// photorealistic characters and five scenes. `char` is the dedup key: one
+// character appears in one panel only, so a grid never repeats a face.
+export const SAMPLE_DEFS = [
+  { file: 'ink-queen.jpg', kind: 'ink', char: 'queen' },
+  { file: 'ink-hawaii.jpg', kind: 'ink', char: 'hawaii' },
+  { file: 'ink-duo.jpg', kind: 'ink', char: 'duo' },
+  { file: 'ink-leather.jpg', kind: 'ink', char: 'leather' },
+  { file: 'ink-blonde.jpg', kind: 'ink', char: 'blonde' },
+  { file: 'neon-queen.jpg', kind: 'photo', char: 'neonqueen' },
+  { file: 'hawaii-keys.jpg', kind: 'photo', char: 'hawaiikeys' },
+  { file: 'beach-couple.jpg', kind: 'photo', char: 'beachcouple' },
+  { file: 'sunset-boulevard.jpg', kind: 'scene', char: 'boulevard' },
+  { file: 'pier-dusk.jpg', kind: 'scene', char: 'pier' },
+  { file: 'classic-car.jpg', kind: 'scene', char: 'car' },
+  { file: 'marina-dawn.jpg', kind: 'scene', char: 'marina' },
+  { file: 'neon-boardwalk.jpg', kind: 'scene', char: 'boardwalk' },
+];
 
-// The bundled poster font: Anton (SIL OFL, app/fonts/) — loaded from a
-// local file, never the network. Canvas titles use it as soon as it is
-// ready; until then the fallback keeps the preview working.
-const fontReady = (document.fonts
-  ? document.fonts.load('100px Anton').catch(() => null)
-  : Promise.resolve(null));
-
-// Thirteen original sample photos (generated for this entry): the five comic
-// illustration characters first — the Character Hero panel always shows the
-// first one — then the three photo characters, then the five scene shots,
-// plus the two kit ones on a separate button. The nine-panel grid is
-// character-led: at least six of its nine panels are characters, and a
-// scene (sunset boulevard) sits in the middle-right panel, where the
-// striped sun has sky to live in instead of a face.
-export const NEW_SAMPLES = ['ink-queen', 'ink-hawaii', 'ink-duo', 'ink-leather', 'ink-blonde', 'neon-queen', 'hawaii-keys', 'sunset-boulevard', 'beach-couple', 'neon-boardwalk', 'skyline-night', 'classic-car', 'marina-dawn'];
-
-const state = {
-  layout: 'charhero',
-  grade: 'comic',
-  titleStyle: 'poster',
-  caption: 'VICE HEIST',
-  tagline: 'VICE CITY · 2026',
-  capSize: 100,
-  capY: 82,
-  photos: Array(13).fill(null),
-  photoNames: Array(13).fill(''),
-  panels: Array.from({ length: 9 }, () => ({ zoom: 1, dx: 0, dy: 0 })),
+export const SIZES = {
+  square: { w: 1080, h: 1080, label: 'Square 1080 × 1080' },
+  portrait: { w: 1080, h: 1350, label: 'Portrait 1080 × 1350' },
+  wide: { w: 1920, h: 1080, label: 'Wide 1920 × 1080' },
 };
 
-function redraw() {
-  drawCover(canvas, state);
-  refreshSlots();
-}
+const state = {
+  layout: 'hero',
+  grade: 'comicInk',
+  title: 'VICE HEIST',
+  tagline: 'VICE CITY 2026',
+  size: 'square',
+  photos: [],
+  views: {},
+  selected: 0,
+};
 
-// The three upload slots always show what is actually loaded in them:
-// a thumbnail and the file's name (a sample name or the uploaded file's
-// name) — never "No file chosen" while a photo is in the slot. Slots 1–3
-// show the first three loaded photos, which the sample buttons fill with
-// the character portraits.
-function refreshSlots() {
-  for (let i = 0; i < 3; i++) {
-    const img = document.getElementById(`thumb${i}`);
-    const name = document.getElementById(`slotname${i}`);
-    const photo = state.photos[i];
-    if (img && name) {
-      if (photo) {
-        img.src = photo.currentSrc || photo.src;
-        img.style.display = 'block';
-        name.textContent = state.photoNames[i] || `Photo ${i + 1}`;
-      } else {
-        img.removeAttribute('src');
-        img.style.display = 'none';
-        name.textContent = 'No photo loaded yet';
-      }
-    }
-  }
-  const count = document.getElementById('loadedCount');
-  if (count) {
-    const n = state.photos.filter(Boolean).length;
-    count.textContent = n
-      ? `${n} photo${n === 1 ? '' : 's'} loaded — every panel shows a different shot while enough are loaded.`
-      : 'No photos loaded yet — load the samples or your own photos.';
-  }
-}
+const preview = document.getElementById('preview');
+const statusEl = document.getElementById('status');
+const titleInput = document.getElementById('title');
+const taglineInput = document.getElementById('tagline');
+const zoomInput = document.getElementById('zoom');
+const layoutRow = document.getElementById('layouts');
+const gradeRow = document.getElementById('grades');
+const sizeRow = document.getElementById('sizes');
+const countEl = document.getElementById('sample-count');
 
-export function loadImage(url) {
+function loadImage(url) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
-    img.onerror = reject;
+    img.onerror = () => reject(new Error('could not load ' + url));
     img.src = url;
   });
 }
 
-function bind(id, fn) {
-  const el = document.getElementById(id);
-  if (el) el.addEventListener('input', (e) => { fn(e.target); redraw(); });
-  return el;
+// Characters first (ink, then photo), scenes last: a grid reads character-led.
+// A shot may pin an exact file order instead (state.fixedOrder).
+function orderedPhotos() {
+  if (state.fixedOrder && state.fixedOrder.length > 0) {
+    const byFile = new Map(state.photos.map((p) => [p.file, p]));
+    const out = [];
+    for (const file of state.fixedOrder) {
+      const photo = byFile.get(file);
+      if (photo) out.push(photo);
+    }
+    for (const photo of state.photos) {
+      if (!state.fixedOrder.includes(photo.file)) out.push(photo);
+    }
+    return out;
+  }
+  const chars = state.photos.filter((p) => p.kind !== 'scene');
+  const scenes = state.photos.filter((p) => p.kind === 'scene');
+  return chars.concat(scenes);
 }
 
-[0, 1, 2].forEach((i) => {
-  const input = document.getElementById(`photo${i}`);
-  const pick = document.querySelector(`.pick[data-for="photo${i}"]`);
-  if (pick) pick.addEventListener('click', () => input.click());
-  input.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    state.photos[i] = await loadImage(URL.createObjectURL(file));
-    state.photoNames[i] = file.name;
-    status.textContent = `Photo ${i + 1} loaded: ${file.name}.`;
-    redraw();
-  });
-});
+// One character per panel: drop any later panel that would repeat a face.
+function assignPanels(count) {
+  const ordered = orderedPhotos();
+  const seen = new Set();
+  const out = [];
+  for (const photo of ordered) {
+    if (out.length >= count) break;
+    if (photo.char && seen.has(photo.char)) continue;
+    seen.add(photo.char);
+    out.push(photo);
+  }
+  let i = 0;
+  while (out.length < count && ordered.length > 0) {
+    out.push(ordered[i % ordered.length]);
+    i++;
+  }
+  return out;
+}
 
-async function loadSamples(names) {
+function panelCount() {
+  return { hero: 5, nine: 9, angled: 5, duo: 2, triptych: 3, banner: 4, strip: 4 }[state.layout] || 5;
+}
+
+function draw() {
+  const size = SIZES[state.size];
+  if (preview.width !== size.w) preview.width = size.w;
+  if (preview.height !== size.h) preview.height = size.h;
+  const photos = assignPanels(panelCount());
+  drawCover(preview, photos, {
+    layout: state.layout,
+    grade: state.grade,
+    title: state.title,
+    tagline: state.tagline,
+    views: state.views,
+  });
+  if (countEl) countEl.textContent = state.photos.length + ' photos loaded — every panel shows a different shot while enough are loaded.';
+}
+
+function setStatus(text) {
+  if (statusEl) statusEl.textContent = text;
+}
+
+function buildPicker(row, items, current, onPick) {
+  row.innerHTML = '';
+  for (const item of items) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'pick' + (item.id === current ? ' active' : '');
+    b.textContent = item.label;
+    b.addEventListener('click', () => {
+      onPick(item.id);
+      for (const el of row.querySelectorAll('.pick')) el.classList.remove('active');
+      b.classList.add('active');
+    });
+    row.appendChild(b);
+  }
+}
+
+function buildPickers() {
+  buildPicker(layoutRow, LAYOUTS, state.layout, (id) => {
+    state.layout = id;
+    state.views = {};
+    draw();
+  });
+  buildPicker(gradeRow, GRADES, state.grade, (id) => {
+    state.grade = id;
+    draw();
+  });
+  buildPicker(
+    sizeRow,
+    Object.keys(SIZES).map((id) => ({ id, label: SIZES[id].label })),
+    state.size,
+    (id) => {
+      state.size = id;
+      draw();
+    },
+  );
+}
+
+async function loadSamples() {
   const loaded = [];
-  const namesOut = [];
-  for (const name of names) {
-    try { loaded.push(await loadImage(`samples/${name}.jpg`)); namesOut.push(`${name}.jpg`); }
-    catch { loaded.push(null); namesOut.push(''); }
+  for (const def of SAMPLE_DEFS) {
+    try {
+      const img = await loadImage('samples/' + def.file);
+      loaded.push({ img, kind: def.kind, char: def.char, file: def.file });
+    } catch (e) {
+      setStatus('Sample missing: ' + def.file);
+    }
   }
-  return { loaded, namesOut };
-}
-
-document.getElementById('sampleNew').addEventListener('click', async () => {
-  const { loaded, namesOut } = await loadSamples(NEW_SAMPLES);
   state.photos = loaded;
-  state.photoNames = namesOut;
-  status.textContent = '13 sample photos loaded: 8 characters (5 comic ink + 3 photo) + 5 scenes.';
-  redraw();
-});
-document.getElementById('sampleKit').addEventListener('click', async () => {
-  const { loaded, namesOut } = await loadSamples(['pier', 'boulevard']);
-  state.photos = [...loaded, ...Array(11).fill(null)];
-  state.photoNames = [...namesOut, ...Array(11).fill('')];
-  status.textContent = 'Kit sample photos loaded.';
-  redraw();
-});
+  state.views = {};
+  state.fixedOrder = null;
+  draw();
+  fillSlots();
+}
 
-bind('layout', (el) => { state.layout = el.value; });
-bind('grade', (el) => { state.grade = el.value; });
-bind('titleStyle', (el) => { state.titleStyle = el.value; });
-bind('caption', (el) => { state.caption = el.value; });
-bind('tagline', (el) => { state.tagline = el.value; });
-bind('capSize', (el) => { state.capSize = Number(el.value); });
-bind('capY', (el) => { state.capY = Number(el.value); });
-
-const panelSelect = document.getElementById('panel');
-bind('zoom', (el) => { state.panels[Number(panelSelect.value)].zoom = Number(el.value) / 100; });
-bind('panx', (el) => { state.panels[Number(panelSelect.value)].dx = Number(el.value); });
-bind('pany', (el) => { state.panels[Number(panelSelect.value)].dy = Number(el.value); });
-panelSelect.addEventListener('change', () => {
-  const p = state.panels[Number(panelSelect.value)];
-  document.getElementById('zoom').value = Math.round(p.zoom * 100);
-  document.getElementById('panx').value = p.dx;
-  document.getElementById('pany').value = p.dy;
-});
-
-const SIZES = [[1080, 1080], [1080, 1350], [1920, 1080]];
-
-function downloadCover(w, h) {
-  return new Promise((resolve) => {
-    const off = document.createElement('canvas');
-    drawCover(off, state, w, h);
-    off.toBlob((blob) => {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `vice-panels-${w}x${h}.png`;
-      a.click();
-      resolve();
-    }, 'image/png');
+// The three upload slots mirror the first three photos of the loaded set,
+// so each slot always shows a thumbnail and a file name; picking a file in
+// a slot replaces that photo.
+function fillSlots() {
+  const slots = document.querySelectorAll('.slot');
+  slots.forEach((slot, i) => {
+    const photo = state.photos[i];
+    const thumb = slot.querySelector('.thumb');
+    const name = slot.querySelector('.fname');
+    if (!photo) {
+      thumb.hidden = true;
+      name.textContent = 'Choose a photo…';
+      slot.classList.remove('filled');
+      return;
+    }
+    thumb.src = 'samples/' + photo.file;
+    thumb.hidden = false;
+    name.textContent = photo.file;
+    slot.classList.add('filled');
   });
 }
 
-document.getElementById('export').addEventListener('click', async () => {
-  const [w, h] = document.getElementById('size').value.split('x').map(Number);
-  await fontReady;
-  await downloadCover(w, h);
-  status.textContent = `Saved vice-panels-${w}x${h}.png`;
-});
+// Three upload slots: each replaces one of the first three photos and shows
+// its thumbnail and file name; "Load 13 samples" restores the set.
+function wireUploads() {
+  const slots = document.querySelectorAll('.slot');
+  slots.forEach((slot, i) => {
+    const input = slot.querySelector('input[type=file]');
+    const thumb = slot.querySelector('.thumb');
+    const name = slot.querySelector('.fname');
+    input.addEventListener('change', async () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      try {
+        const img = await loadImage(url);
+        state.photos[i] = { img, kind: 'photo', char: 'upload' + i, file: file.name };
+        thumb.src = url;
+        thumb.hidden = false;
+        name.textContent = file.name;
+        slot.classList.add('filled');
+        draw();
+      } catch (e) {
+        setStatus('Could not read ' + file.name);
+      }
+    });
+  });
+  document.getElementById('load-samples').addEventListener('click', () => {
+    loadSamples().then(() => {
+      setStatus('13 samples loaded.');
+    });
+  });
+}
 
-document.getElementById('exportAll').addEventListener('click', async () => {
-  await fontReady;
-  for (const [w, h] of SIZES) {
-    await downloadCover(w, h);
-    // Stagger the downloads so the browser keeps all three.
-    await new Promise((r) => setTimeout(r, 350));
+function downloadPng(canvas, filename) {
+  canvas.toBlob((blob) => {
+    if (!blob) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }, 'image/png');
+}
+
+function renderOffscreen(sizeId) {
+  const size = SIZES[sizeId];
+  const canvas = document.createElement('canvas');
+  canvas.width = size.w;
+  canvas.height = size.h;
+  drawCover(canvas, assignPanels(panelCount()), {
+    layout: state.layout,
+    grade: state.grade,
+    title: state.title,
+    tagline: state.tagline,
+    views: state.views,
+  });
+  return canvas;
+}
+
+function wireExport() {
+  document.getElementById('export-one').addEventListener('click', () => {
+    const size = SIZES[state.size];
+    downloadPng(renderOffscreen(state.size), 'vice-heist-' + size.w + 'x' + size.h + '.png');
+    setStatus('Saved vice-heist-' + size.w + 'x' + size.h + '.png');
+  });
+  document.getElementById('export-all').addEventListener('click', () => {
+    for (const id of Object.keys(SIZES)) {
+      const size = SIZES[id];
+      downloadPng(renderOffscreen(id), 'vice-heist-' + size.w + 'x' + size.h + '.png');
+    }
+    setStatus('Saved all three sizes: 1080×1080, 1080×1350, 1920×1080.');
+  });
+}
+
+// Drag a panel to pan its photo; the wheel zooms the panel under the cursor.
+function wireCrop() {
+  let drag = null;
+  function panelIndexAt(clientX, clientY) {
+    const rect = preview.getBoundingClientRect();
+    const x = ((clientX - rect.left) / rect.width) * preview.width;
+    const y = ((clientY - rect.top) / rect.height) * preview.height;
+    const panels = layoutPanels(state.layout, preview.width, preview.height);
+    for (let i = 0; i < panels.length; i++) {
+      const p = panels[i];
+      if (x >= p.x && x <= p.x + p.w && y >= p.y && y <= p.y + p.h) return i;
+    }
+    return 0;
   }
-  status.textContent = 'Saved all 3 sizes: 1080×1080, 1080×1350, 1920×1080.';
-});
-
-const shot = new URLSearchParams(location.search).get('shot');
-if (shot) {
-  runShot(shot, new URLSearchParams(location.search), state, loadImage, redraw, fontReady);
-} else {
-  // Default scene: the thirteen samples, comic characters first, so the first
-  // paint already shows the Character Hero cover instead of empty panels.
-  // Wait for the font so the first paint already uses Anton, not the fallback.
-  Promise.all([fontReady, loadSamples(NEW_SAMPLES)]).then(([, { loaded, namesOut }]) => {
-    state.photos = loaded;
-    state.photoNames = namesOut;
-    redraw();
+  preview.addEventListener('pointerdown', (e) => {
+    const idx = panelIndexAt(e.clientX, e.clientY);
+    state.selected = idx;
+    const rect = preview.getBoundingClientRect();
+    drag = {
+      idx,
+      startX: e.clientX,
+      startY: e.clientY,
+      rect,
+      base: JSON.parse(JSON.stringify(state.views[idx] || { zoom: 1, ox: 0, oy: 0 })),
+    };
+    preview.setPointerCapture(e.pointerId);
   });
-  redraw();
+  preview.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const dx = (e.clientX - drag.startX) / drag.rect.width;
+    const dy = (e.clientY - drag.startY) / drag.rect.height;
+    const panels = layoutPanels(state.layout, preview.width, preview.height);
+    const p = panels[drag.idx];
+    const v = {
+      zoom: drag.base.zoom,
+      ox: drag.base.ox + (dx * preview.width) / p.w,
+      oy: drag.base.oy + (dy * preview.height) / p.h,
+    };
+    state.views[drag.idx] = v;
+    if (zoomInput) zoomInput.value = String(Math.round(v.zoom * 100));
+    draw();
+  });
+  preview.addEventListener('pointerup', () => {
+    drag = null;
+  });
+  preview.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const idx = panelIndexAt(e.clientX, e.clientY);
+    state.selected = idx;
+    const v = state.views[idx] || { zoom: 1, ox: 0, oy: 0 };
+    v.zoom = Math.min(2.5, Math.max(1, v.zoom * (e.deltaY < 0 ? 1.08 : 0.93)));
+    state.views[idx] = v;
+    if (zoomInput) zoomInput.value = String(Math.round(v.zoom * 100));
+    const zoomVal = document.getElementById('zoom-val');
+    if (zoomVal) zoomVal.textContent = Math.round(v.zoom * 100) + '%';
+    draw();
+  }, { passive: false });
+  if (zoomInput) {
+    zoomInput.addEventListener('input', () => {
+      const v = state.views[state.selected] || { zoom: 1, ox: 0, oy: 0 };
+      v.zoom = Number(zoomInput.value) / 100;
+      state.views[state.selected] = v;
+      const zoomVal = document.getElementById('zoom-val');
+      if (zoomVal) zoomVal.textContent = zoomInput.value + '%';
+      draw();
+    });
+  }
+  document.getElementById('reset-crop').addEventListener('click', () => {
+    state.views = {};
+    if (zoomInput) zoomInput.value = '100';
+    draw();
+    setStatus('Crop reset.');
+  });
 }
+
+function wireText() {
+  titleInput.addEventListener('input', () => {
+    state.title = titleInput.value || 'VICE HEIST';
+    draw();
+  });
+  taglineInput.addEventListener('input', () => {
+    state.tagline = taglineInput.value || 'VICE CITY 2026';
+    draw();
+  });
+}
+
+async function boot() {
+  buildPickers();
+  wireUploads();
+  wireExport();
+  wireCrop();
+  wireText();
+  await document.fonts.ready;
+  try {
+    await document.fonts.load('80px Anton');
+  } catch (e) {
+    // Anton falls back to Arial Black; the cover still draws.
+  }
+  await loadSamples();
+  const query = new URLSearchParams(location.search);
+  const shot = query.get('shot');
+  if (shot && SHOT_DEFS[shot]) {
+    applyShot(shot, state, draw);
+    buildPickers();
+    draw();
+    // Do not signal readiness until the slot thumbnails have finished
+    // loading, or the editor screenshot could catch one half-drawn.
+    const thumbs = Array.from(document.querySelectorAll('.slot .thumb')).filter((t) => !t.hidden);
+    const thumbsReady = Promise.all(thumbs.map((t) => (t.complete ? Promise.resolve() : new Promise((res) => {
+      t.onload = res;
+      t.onerror = res;
+    }))));
+    thumbsReady.then(() => requestAnimationFrame(() => requestAnimationFrame(() => {
+      window.__shotReady = true;
+    })));
+  }
+  draw();
+}
+
+boot();

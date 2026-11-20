@@ -1,28 +1,19 @@
-// VICE PANELS v5 — a gta6-cover-art-01 entry (Node 22, standard library only).
-// The program hands the app in: it copies app/ and screenshots/ from beside
-// this file to /output and writes /output/dossier.json with the vendored
-// make.fun library, so the judge reads the app's source and screenshots.
-// The app itself is plain static files a desktop browser loads offline
-// (app/index.html and its ES modules, no library, no network request).
-// It makes multi-panel Vice City style covers from the user's own photos:
-// seven layouts (incl. a Character Hero with one big character panel and a
-// 3x3 nine-panel grid that never repeats a photo while nine are loaded),
-// eight colour grades (incl. a Heatwave gradient-map, a Poster Ink comic
-// halftone shader, a split-tone grade and a Comic Ink grade that posterizes
-// any photo and inks its edges on canvas, turning it into comic art),
-// thirteen original sample photos (five comic illustration characters first,
-// then three photo characters, then five scenes — the nine-panel grid is
-// character-led), a condensed poster-block
-// title in the bundled Anton font (SIL OFL, app/fonts/) with auto-fit and
-// halftone dots, per-panel zoom/pan/crop, and one-click PNG export in all
-// three post sizes.
-// A striped retro sun replaces the old painted sun blob.
+// VICE PANELS — a gta6-cover-art-01 entry (Node 22, standard library only).
+// The app is this directory's app/ folder: plain static files a desktop
+// browser loads offline (app/index.html plus its ES modules, no library and
+// no network request). This program hands it in: it copies app/ and
+// screenshots/ from beside this file to /output and writes
+// /output/dossier.json, the summary the judge reads, using the vendored
+// make.fun library. The cover maker itself lives in app/src/cover.js:
+// seven layouts, eight canvas grades, a striped retro sun and a fitted
+// Anton title block. The thirteen sample photos in app/samples/ were made
+// for this entry with an image model and are free to use.
 //
 // Serve it locally with `node serve.ts`, then open http://localhost:8080.
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { cpSync, existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-app.ts';
@@ -30,22 +21,19 @@ import { buildDossier } from './vendor/makefun-app.ts';
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
-// Refuse to hand in a broken entry: the gate allows at most 4 screenshots.
-const shotDir = join(here, 'screenshots');
-const shots = existsSync(shotDir) ? readdirSync(shotDir).filter((f) => !f.startsWith('.')) : [];
-if (shots.length < 3 || shots.length > 4) {
-  throw new Error(`expected 3 or 4 screenshots, found ${shots.length}`);
-}
-
 mkdirSync(out, { recursive: true });
 cpSync(join(here, 'app'), join(out, 'app'), { recursive: true });
 mkdirSync(join(out, 'screenshots'), { recursive: true });
-if (existsSync(shotDir)) cpSync(shotDir, join(out, 'screenshots'), { recursive: true });
+if (existsSync(join(here, 'screenshots'))) {
+  cpSync(join(here, 'screenshots'), join(out, 'screenshots'), { recursive: true });
+}
 
-// The scorer's own caps (reference/gate.json): only text_max_bytes shapes the bytes; the others refuse an entry the
-// scorer would refuse (more than 4 screenshots or one over 256 KiB; more than 993 files in app/ or 48 MiB of app
-// files, in all, or a path under app/ over 1000 bytes: app/ counts beside /output's own 1000-entry cap, its
-// screenshots/ and dossier.json).
+// The scorer's own caps (reference/gate.json): text_max_bytes shapes the
+// dossier's text budget; the other limits refuse an entry the scorer would
+// refuse — more than 4 screenshots or one over 256 KiB, more than 993 files
+// in app/ or 48 MiB of app files in all, or a path under app/ over 1000
+// bytes. app/ counts beside /output's own 1000-entry cap, its screenshots/
+// and dossier.json.
 writeFileSync(
   join(out, 'dossier.json'),
   buildDossier(out, {
